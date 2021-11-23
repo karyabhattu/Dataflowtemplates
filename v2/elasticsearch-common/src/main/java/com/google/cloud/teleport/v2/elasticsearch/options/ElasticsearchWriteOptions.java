@@ -73,4 +73,10 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Long getMaxRetryDuration();
 
   void setMaxRetryDuration(Long maxRetryDuration);
+
+  @Description("Enable additional debug output")
+  @Default.Boolean(false)
+  Boolean getVerboseDebugMessages();
+
+  void setVerboseDebugMessages(Boolean verboseDebugMessages);
 }
