@@ -17,8 +17,9 @@ package com.google.cloud.teleport.v2.elasticsearch.templates;
 
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.elasticsearch.options.PubSubToElasticsearchOptions;
-import com.google.cloud.teleport.v2.elasticsearch.transforms.FailedPubsubMessageToPubsubTopicFn;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.FailedElasticsearchMessageToPubsubTopicFn;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessEventMetadata;
+import com.google.cloud.teleport.v2.elasticsearch.transforms.ProcessValidateJsonFields;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.PubSubMessageToJsonDocument;
 import com.google.cloud.teleport.v2.elasticsearch.transforms.WriteToElasticsearch;
 import com.google.cloud.teleport.v2.elasticsearch.utils.ElasticsearchIndex;
@@ -33,6 +34,7 @@ import org.apache.beam.sdk.io.gcp.pubsub.PubsubMessageWithAttributesCoder;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TypeDescriptors;
@@ -58,6 +60,10 @@ public class PubSubToElasticsearch {
   /** The tag for the error output table of the json to table row transform. */
   public static final TupleTag<FailsafeElement<PubsubMessage, String>> TRANSFORM_ERROROUTPUT_OUT =
       new TupleTag<FailsafeElement<PubsubMessage, String>>() {};
+
+  public static final TupleTag<String> ELASTICSEARCH_SUCCESS_TAG = new TupleTag<String>() {};
+
+  public static final TupleTag<String> ELASTICSEARCH_ERROR_TAG = new TupleTag<String>() {};
 
   /** Pubsub message/string coder for pipeline. */
   public static final FailsafeElementCoder<PubsubMessage, String> CODER =
@@ -142,24 +148,27 @@ public class PubSubToElasticsearch {
     /*
      * Step #3a: Write Json documents into Elasticsearch using {@link ElasticsearchTransforms.WriteToElasticsearch}.
      */
-    convertedPubsubMessages
-        .get(TRANSFORM_OUT)
-        .apply(
-            "GetJsonDocuments",
-            MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
-        .apply("Insert metadata", new ProcessEventMetadata())
-        .apply(
-            "WriteToElasticsearch",
-            WriteToElasticsearch.newBuilder()
-                .setOptions(options.as(PubSubToElasticsearchOptions.class))
-                .build());
+    PCollection<String> failedMessages =
+        convertedPubsubMessages
+            .get(TRANSFORM_OUT)
+            .apply(
+                "GetJsonDocuments",
+                MapElements.into(TypeDescriptors.strings()).via(FailsafeElement::getPayload))
+            .apply("Validate JSON fields", new ProcessValidateJsonFields())
+            .apply("Insert metadata", new ProcessEventMetadata())
+            .apply(
+                "WriteToElasticsearch",
+                WriteToElasticsearch.newBuilder()
+                    .setOptions(options.as(PubSubToElasticsearchOptions.class))
+                    .build());
 
     /*
      * Step 3b: Write elements that failed processing to error output PubSub topic via {@link PubSubIO}.
      */
-    convertedPubsubMessages
-        .get(TRANSFORM_ERROROUTPUT_OUT)
-        .apply(ParDo.of(new FailedPubsubMessageToPubsubTopicFn()))
+    failedMessages
+        .apply(
+            "FailedElasticsearchMessagesToPubSubTopic",
+            ParDo.of(new FailedElasticsearchMessageToPubsubTopicFn()))
         .apply("writeFailureMessages", PubsubIO.writeMessages().to(options.getErrorOutputTopic()));
 
     // Execute the pipeline and return the result.
