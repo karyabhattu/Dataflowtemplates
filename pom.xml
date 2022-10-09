@@ -222,7 +222,7 @@
       <version>${autovalue.service.version}</version>
     </dependency>
 
-    <!-- Dependencies needed for Splunk -->
+    <!-- Dependencies needed for  and Sentinel -->
     <dependency>
       <groupId>com.google.http-client</groupId>
       <artifactId>google-http-client</artifactId>
