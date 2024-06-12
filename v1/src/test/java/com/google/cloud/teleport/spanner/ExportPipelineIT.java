@@ -20,13 +20,17 @@ import static org.apache.beam.it.gcp.artifacts.matchers.ArtifactAsserts.assertTh
 import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.mutationsToRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
@@ -45,6 +49,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link ExportPipeline Spanner to GCS Avro} template. */
 @Category(TemplateIntegrationTest.class)
@@ -52,6 +58,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ExportPipelineIT extends TemplateTestBase {
 
+  private static final Logger LOG = LoggerFactory.getLogger(ExportPipelineIT.class);
   private static final int MESSAGES_COUNT = 100;
 
   private static final Schema EMPTY_SCHEMA =
@@ -79,6 +86,19 @@ public class ExportPipelineIT extends TemplateTestBase {
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"LastName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"Rating\", \"type\": \"float\" }\n"
+                  + "  ]\n"
+                  + "}");
+
+  private static final Schema EMBEDDING_VECTORS_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{\n"
+                  + "  \"type\": \"record\",\n"
+                  + "  \"name\": \"EmbeddingVectors\",\n"
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
+                  + "  \"fields\": [\n"
+                  + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
+                  + "    { \"name\": \"Embeddings\", \"type\": [\"null\",{\"type\":\"array\",\"items\":[\"null\",\"double\"]}] ,\"sqlType\": \"ARRAY<FLOAT64>(vector_length=>4)\"}\n"
                   + "  ]\n"
                   + "}");
 
@@ -176,6 +196,13 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  Rating FLOAT32,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
+    String createEmbeddingVectorsTableStatement =
+        String.format(
+            "CREATE TABLE `%s_EmbeddingVectors` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  Embeddings ARRAY<FLOAT64>(vector_length=>4),\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
     String createModelStructStatement =
         String.format(
             "CREATE MODEL `%s_ModelStruct`\n"
@@ -186,15 +213,21 @@ public class ExportPipelineIT extends TemplateTestBase {
 
     googleSqlResourceManager.executeDdlStatement(createEmptyTableStatement);
     googleSqlResourceManager.executeDdlStatement(createSingersTableStatement);
+    googleSqlResourceManager.executeDdlStatement(createEmbeddingVectorsTableStatement);
     googleSqlResourceManager.executeDdlStatement(createModelStructStatement);
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+
+    List<Mutation> expectedData = generateTableRows(testName);
     googleSqlResourceManager.write(expectedData);
+
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
-            .addParameter("outputDir", getGcsPath("output/"));
+            .addParameter("outputDir", getGcsPath("output/"))
+            // .addParameter("outputDir",
+            // "gs://djagaluru-teleport-integration-test/exported-data/gsql/")
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -207,6 +240,10 @@ public class ExportPipelineIT extends TemplateTestBase {
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
+    List<Artifact> embeddingsArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
@@ -215,16 +252,42 @@ public class ExportPipelineIT extends TemplateTestBase {
             "output/",
             Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "ModelStruct")));
     assertThat(singersArtifacts).isNotEmpty();
+    assertThat(embeddingsArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
+    List<GenericRecord> embeddingsRecords =
+        extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
+    List<Mutation> expectedSingerRecords = expectedData.subList(0, MESSAGES_COUNT);
+    List<Mutation> expectedEmbeddingRecords = expectedData.subList(MESSAGES_COUNT, expectedData.size());
+
+    assertEquals(MESSAGES_COUNT,embeddingsRecords.size());
+
+    LOG.info("singersRecords {}.", singersRecords);
+    LOG.info("expectedSingerRecords {}.", mutationsToRecords(expectedSingerRecords));
+
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedSingerRecords));
+
+    assertEquals(MESSAGES_COUNT, expectedEmbeddingRecords.size());
+    List<Map<String, Object>> expEmRecs = mutationsToRecords(expectedEmbeddingRecords, List.of("Id", "Embeddings"));
+
+    assertEquals(MESSAGES_COUNT, expEmRecs.size());
+    assertThatGenericRecords(embeddingsRecords).hasRows(MESSAGES_COUNT);
+
+    LOG.info("embeddingsRecords {}.", embeddingsRecords);
+    LOG.info("expectedEmbeddingsRecords {}.", expEmRecs);
+
+    assertThatGenericRecords(embeddingsRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            expEmRecs);
+
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
   }
@@ -245,17 +308,27 @@ public class ExportPipelineIT extends TemplateTestBase {
                 + "  \"Rating\" real,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
-
+    String createEmbeddingVectorsTableStatement =
+        String.format(
+            "CREATE TABLE \"%s_EmbeddingVectors\" (\n"
+                + "  \"Id\" bigint,\n"
+                + "  \"Embeddings\" double precision[] vector length 4,\n"
+                + "PRIMARY KEY(\"Id\"))",
+            testName);
     postgresResourceManager.executeDdlStatement(createEmptyTableStatement);
     postgresResourceManager.executeDdlStatement(createSingersTableStatement);
-    List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+    postgresResourceManager.executeDdlStatement(createEmbeddingVectorsTableStatement);
+    List<Mutation> expectedData = generateTableRows(testName);
     postgresResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
             .addParameter("spannerProjectId", PROJECT)
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
-            .addParameter("outputDir", getGcsPath("output/"));
+            .addParameter("outputDir", getGcsPath("output/"))
+            // .addParameter("outputDir",
+            // "gs://djagaluru-teleport-integration-test/exported-data/postgres/")
+            .addParameter("spannerHost", "https://staging-wrenchworks.sandbox.googleapis.com");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -268,23 +341,35 @@ public class ExportPipelineIT extends TemplateTestBase {
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Singers")));
+    List<Artifact> embeddingsArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "EmbeddingVectors")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
     assertThat(singersArtifacts).isNotEmpty();
+    assertThat(embeddingsArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
 
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
+    List<GenericRecord> embeddingsRecords =
+        extractArtifacts(embeddingsArtifacts, EMBEDDING_VECTORS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
 
     assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedData.subList(0, MESSAGES_COUNT)));
+    assertThatGenericRecords(embeddingsRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            mutationsToRecords(expectedData.subList(MESSAGES_COUNT, expectedData.size())));
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
-  private static List<Mutation> generateTableRows(String tableId) {
+  private static List<Mutation> generateTableRows(String testName) {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 0; i < MESSAGES_COUNT; i++) {
+      String tableId = String.format("%s_Singers", testName);
       Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
@@ -293,6 +378,14 @@ public class ExportPipelineIT extends TemplateTestBase {
       mutations.add(mutation.build());
     }
 
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      String tableId = String.format("%s_EmbeddingVectors", testName);
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("Id").to(i);
+
+      mutation.set("Embeddings").to(Value.float64Array(ThreadLocalRandom.current().doubles(4, -10000, 10000).toArray()));
+      mutations.add(mutation.build());
+    }
     return mutations;
   }
 
