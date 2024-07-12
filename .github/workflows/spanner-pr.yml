@@ -21,7 +21,11 @@ on:
     branches:
     - 'main'
     paths:
-      # Include spanner paths only
+      # Core files that affect all modules
+      - 'pom.xml'
+      - 'v2/pom.xml'
+      - 'it/**'
+      # Relevant Spanner paths
       - '.github/workflows/spanner-pr.yml'
       - 'v2/datastream-to-spanner/**'
       - 'v2/spanner-common/**'
