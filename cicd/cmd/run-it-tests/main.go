@@ -40,7 +40,8 @@ func main() {
 		mvnFlags.SkipTests(),
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
-		mvnFlags.ThreadCount(8))
+		mvnFlags.ThreadCount(8),
+		flags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -73,7 +74,8 @@ func main() {
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		flags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
