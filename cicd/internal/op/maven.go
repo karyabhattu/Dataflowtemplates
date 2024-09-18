@@ -31,6 +31,7 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs = append(fullArgs, "-f", pom)
 	fullArgs = append(fullArgs, "-e")
 	fullArgs = append(fullArgs, args...)
+	fullArgs = append(fullArgs, "-Dmaven.repo.local=m2/")
 	modules := flags.ModulesToBuild()
 	if len(modules) != 0 {
 		moduleArgs := []string{"-pl", strings.Join(modules, ",")}

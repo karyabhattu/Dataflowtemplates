@@ -41,7 +41,7 @@ func main() {
 		mvnFlags.SkipJacoco(),
 		mvnFlags.SkipShade(),
 		mvnFlags.ThreadCount(8),
-		flags.InternalMaven())
+		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
@@ -60,6 +60,7 @@ func main() {
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
+		mvnFlags.InternalMaven(),
 		flags.Region(),
 		flags.Project(),
 		flags.ArtifactBucket(),
@@ -74,8 +75,7 @@ func main() {
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword(),
-		flags.InternalMaven())
+		flags.CloudProxyPassword())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
