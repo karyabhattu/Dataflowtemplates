@@ -56,7 +56,7 @@ public class KafkaTransform {
       List<String> topicsList,
       Map<String, Object> config,
       @Nullable Map<String, Object> sslConfig,
-      Boolean enableCommitOffsets) {
+      boolean enableCommitOffsets) {
     KafkaIO.Read<String, String> kafkaRecords =
         KafkaIO.<String, String>read()
             .withBootstrapServers(bootstrapServers)
@@ -65,10 +65,8 @@ public class KafkaTransform {
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
             .withValueDeserializerAndCoder(
                 StringDeserializer.class, NullableCoder.of(StringUtf8Coder.of()))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
     if (enableCommitOffsets) {
       kafkaRecords = kafkaRecords.commitOffsetsInFinalize();
     }
@@ -97,10 +95,8 @@ public class KafkaTransform {
             .withKeyDeserializerAndCoder(
                 ByteArrayDeserializer.class, NullableCoder.of(ByteArrayCoder.of()))
             .withValueDeserializer(new KafkaSchemaDeserializerProvider(avroSchema))
-            .withConsumerConfigUpdates(config);
-    if (sslConfig != null) {
-      kafkaRecords = kafkaRecords.withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
-    }
+            .withConsumerConfigUpdates(config)
+            .withConsumerFactoryFn(new FileAwareConsumerFactoryFn());
     return kafkaRecords.withoutMetadata();
   }
 
@@ -116,7 +112,7 @@ public class KafkaTransform {
       String bootstrapServers,
       List<String> topicsList,
       Map<String, Object> config,
-      Boolean enableCommitOffsets) {
+      boolean enableCommitOffsets) {
 
     KafkaIO.Read<byte[], byte[]> kafkaRecords =
         KafkaIO.<byte[], byte[]>read()
