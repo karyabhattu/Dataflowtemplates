@@ -31,7 +31,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **instanceId** : The destination Cloud Spanner instance.
 * **databaseId** : The destination Cloud Spanner database.
 * **projectId** : This is the name of the Cloud Spanner project.
-* **outputDirectory** : This directory is used to dump the failed and skipped records in a migration.
+* **outputDirectory** : This directory is used to dump the failed/skipped/filtered records in a migration.
 
 ### Optional parameters
 
@@ -44,9 +44,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
 * **maxConnections** : Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. (Example: -1). Defaults to: 0.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
-* **defaultLogLevel** : Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO.
+* **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
+* **transformationClassName** : Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
+* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
 
 
 
@@ -141,9 +143,11 @@ export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
-export DEFAULT_LOG_LEVEL=INFO
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
@@ -164,8 +168,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "sessionFilePath=$SESSION_FILE_PATH" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
-  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
-  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
 
 For more information about the command, please check:
@@ -200,9 +203,11 @@ export NUM_PARTITIONS=0
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
-export DEFAULT_LOG_LEVEL=INFO
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -270,9 +275,11 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # spannerHost = "https://batch-spanner.googleapis.com"
     # maxConnections = "-1"
     # sessionFilePath = ""
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
     # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
-    # defaultLogLevel = "INFO"
+    # extraFilesToStage = "gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
   }
 }
 ```
