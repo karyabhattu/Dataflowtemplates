@@ -20,6 +20,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
@@ -44,6 +47,7 @@ import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -55,6 +59,8 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class JdbcIoWrapperTest {
   @Mock DialectAdapter mockDialectAdapter;
+
+  @Mock BasicDataSource mockBasicDataSource;
 
   @BeforeClass
   public static void beforeClass() {
@@ -309,6 +315,66 @@ public class JdbcIoWrapperTest {
     assertThat(
             jdbcIOWrapperWithFeatureEnabled.getTableReaders().values().stream().findFirst().get())
         .isInstanceOf(ReadWithUniformPartitions.class);
+  }
+
+  @Test
+  public void testLoginTimeout() throws RetriableSchemaDiscoveryException {
+
+    int testLoginTimeout = 1000;
+
+    doNothing().when(mockBasicDataSource).setMaxWaitMillis(testLoginTimeout);
+    when(mockBasicDataSource.getUrl())
+        .thenReturn("jdbc://testIp:3306/testDB")
+        .thenReturn("jdbc://testIp:3306/testDB")
+        .thenReturn("jdbc://testIp:3306/testDB?connectTimeout=2000")
+        .thenReturn("jdbc://testIp:3306/testDB?socketTimeout=2000");
+    doNothing()
+        .when(mockBasicDataSource)
+        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeout));
+    doNothing()
+        .when(mockBasicDataSource)
+        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeout));
+
+    SourceSchemaReference testSourceSchemaReference =
+        SourceSchemaReference.builder().setDbName("testDB").build();
+
+    JdbcIOWrapperConfig config =
+        JdbcIOWrapperConfig.builderWithMySqlDefaults()
+            .setSourceDbURL("jdbc:derby://myhost/memory:TestingDB;create=true")
+            .setSourceSchemaReference(testSourceSchemaReference)
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeout)
+            .setShardID("test")
+            .setTableVsPartitionColumns(ImmutableMap.of("testTable", ImmutableList.of("ID")))
+            .setDbAuth(
+                LocalCredentialsProvider.builder()
+                    .setUserName("testUser")
+                    .setPassword("testPassword")
+                    .build())
+            .setJdbcDriverJars("")
+            .setJdbcDriverClassName("org.apache.derby.jdbc.EmbeddedDriver")
+            .setDialectAdapter(mockDialectAdapter)
+            .build();
+    JdbcIOWrapperConfig configWithTimeoutSet =
+        config.toBuilder()
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeout)
+            .build();
+    JdbcIOWrapperConfig configWithUrlTimeout =
+        config.toBuilder()
+            .setSourceDbURL(
+                "jdbc:derby://myhost/memory:TestingDB;create=true?socketTimeout=10&connectTimeout=10")
+            .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(testLoginTimeout)
+            .build();
+
+    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithTimeoutSet);
+    JdbcIoWrapper.setDataSourceLoginTimeout(mockBasicDataSource, configWithUrlTimeout);
+
+    assertThat(configWithTimeoutSet.schemaDiscoveryConnectivityTimeoutMilliSeconds())
+        .isEqualTo(testLoginTimeout);
+    verify(mockBasicDataSource, times(2)).setMaxWaitMillis(testLoginTimeout);
+    verify(mockBasicDataSource, times(1))
+        .addConnectionProperty("connectTimeout", String.valueOf(testLoginTimeout));
+    verify(mockBasicDataSource, times(1))
+        .addConnectionProperty("socketTimeout", String.valueOf(testLoginTimeout));
   }
 
   @Test
