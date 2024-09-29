@@ -42,18 +42,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream.
 * **instanceId** : The Spanner instance where the changes are replicated.
 * **databaseId** : The Spanner database where the changes are replicated.
+* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
 * **streamName** : The name or template for the stream to poll for schema information and source type.
 
 ### Optional parameters
 
+* **inputFilePattern** : [Deprecated] The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled. Please set pubsub subscription instead.
 * **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId** : The Spanner project ID.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
 * **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
 * **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
@@ -66,7 +66,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **roundJsonDecimals** : This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
 * **runMode** : This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **transformationContextFilePath** : Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
-* **directoryWatchDurationInMinutes** : The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
 * **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
 * **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in forward migration. Defaults to empty.
@@ -94,7 +93,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
 
 ### Building Template
 
@@ -151,17 +150,17 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_to_Spanner"
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
 export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
@@ -174,7 +173,6 @@ export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
 export RUN_MODE=regular
 export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
-export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export SPANNER_PRIORITY=HIGH
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 export TRANSFORMATION_JAR_PATH=""
@@ -207,7 +205,6 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "roundJsonDecimals=$ROUND_JSON_DECIMALS" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH" \
-  --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
   --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
@@ -232,17 +229,17 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export INPUT_FILE_PATTERN=<inputFilePattern>
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
+export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export STREAM_NAME=<streamName>
 
 ### Optional
+export INPUT_FILE_PATTERN=<inputFilePattern>
 export INPUT_FILE_FORMAT=avro
 export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
-export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
 export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
@@ -255,7 +252,6 @@ export DATASTREAM_SOURCE_TYPE=<datastreamSourceType>
 export ROUND_JSON_DECIMALS=false
 export RUN_MODE=regular
 export TRANSFORMATION_CONTEXT_FILE_PATH=<transformationContextFilePath>
-export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export SPANNER_PRIORITY=HIGH
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 export TRANSFORMATION_JAR_PATH=""
@@ -270,9 +266,20 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
 -f v2/datastream-to-spanner
 ```
+
+#### Troubleshooting
+If there are compilation errors related to template metadata or template plugin framework,
+make sure the plugin dependencies are up-to-date by running:
+```
+mvn clean install -pl plugins/templates-maven-plugin,metadata -am
+```
+See [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin)
+for more information.
+
+
 
 ## Terraform
 
@@ -315,15 +322,15 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
   name              = "cloud-datastream-to-spanner"
   region            = var.region
   parameters        = {
-    inputFilePattern = "<inputFilePattern>"
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
+    gcsPubSubSubscription = "<gcsPubSubSubscription>"
     streamName = "<streamName>"
+    # inputFilePattern = "<inputFilePattern>"
     # inputFileFormat = "avro"
     # sessionFilePath = "<sessionFilePath>"
     # projectId = "<projectId>"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # gcsPubSubSubscription = "<gcsPubSubSubscription>"
     # shadowTablePrefix = "shadow_"
     # shouldCreateShadowTables = "true"
     # rfcStartDateTime = "1970-01-01T00:00:00.00Z"
@@ -336,7 +343,6 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # roundJsonDecimals = "false"
     # runMode = "regular"
     # transformationContextFilePath = "<transformationContextFilePath>"
-    # directoryWatchDurationInMinutes = "10"
     # spannerPriority = "HIGH"
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
     # transformationJarPath = ""
