@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.Calendar;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.joda.time.Duration;
 
 // TODO: Fine-tune the defaults based on benchmarking.
 
@@ -62,7 +63,8 @@ public class MySqlConfigDefaults {
           "autoReconnect", "true",
           "maxReconnects", "10");
 
-  public static final FluentBackoff DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF = FluentBackoff.DEFAULT;
+  public static final FluentBackoff DEFAULT_MYSQL_SCHEMA_DISCOVERY_BACKOFF =
+      FluentBackoff.DEFAULT.withMaxCumulativeBackoff(Duration.standardMinutes(5L));
 
   /**
    * Default Initialization Sequence for the JDBC connection.

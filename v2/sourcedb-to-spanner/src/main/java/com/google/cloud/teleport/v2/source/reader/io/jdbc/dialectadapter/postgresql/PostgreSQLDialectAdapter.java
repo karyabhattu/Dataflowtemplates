@@ -133,7 +133,8 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     } catch (SQLException e) {
-      logger.error("Sql exception while discovering table list for datasource={}", dataSource, e);
+      logger.error(
+          "Sql exception while discovering table list for datasource={} cause={}", dataSource, e);
       schemaDiscoveryErrors.inc();
       throw new SchemaDiscoveryException(e);
     }
@@ -233,7 +234,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     } catch (SQLException e) {
       logger.error(
-          "Sql exception while discovering table schema for datasource={} db={} tables={}",
+          "Sql exception while discovering table schema for datasource={} db={} tables={} cause={}",
           dataSource,
           sourceSchemaReference,
           tables,
@@ -248,7 +249,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
         tableSchemaBuilder.build();
     logger.info(
-        "Discovered tale schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
+        "Discovered table schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
         dataSource,
         sourceSchemaReference,
         tables,
@@ -368,7 +369,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     } catch (SQLException e) {
       logger.error(
-          "Sql exception while discovering table schema for datasource={} db={} tables={}",
+          "Sql exception while discovering table schema for datasource={} db={} tables={} cause={}",
           dataSource,
           sourceSchemaReference,
           tables,
