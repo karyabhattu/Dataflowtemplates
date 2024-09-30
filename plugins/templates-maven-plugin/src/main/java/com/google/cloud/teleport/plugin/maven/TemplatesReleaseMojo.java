@@ -86,6 +86,9 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${unifiedWorker}", readonly = true, required = false)
   protected boolean unifiedWorker;
 
+  @Parameter(defaultValue = "true", property = "generateSBOM", readonly = true, required = false)
+  protected boolean generateSBOM;
+
   public void execute() throws MojoExecutionException {
 
     if (librariesBucketName == null || librariesBucketName.isEmpty()) {
@@ -148,7 +151,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 gcpTempLocation,
                 baseContainerImage,
                 basePythonContainerImage,
-                unifiedWorker);
+                unifiedWorker,
+                generateSBOM);
 
         String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
         LOG.info("Template staged: {}", templatePath);
