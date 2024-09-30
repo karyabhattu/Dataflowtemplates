@@ -49,7 +49,7 @@ CREATE TABLE `bigint_table` (
 
 CREATE TABLE `bigint_unsigned_table` (
      `id` INT PRIMARY KEY,
-     `bigint_unsigned_col` BIGINT UNSIGNEDDEFAULT NULL
+     `bigint_unsigned_col` BIGINT UNSIGNED DEFAULT NULL
 );
 
 CREATE TABLE `float_table` (
@@ -184,8 +184,8 @@ CREATE TABLE `bigint_unsigned_pk_table` (
 );
 
 CREATE TABLE `string_pk_table` (
-     `id` STRING(50) PRIMARY KEY,
-     `string_col` STRING(50) NOT NULL
+     `id` VARCHAR(50) PRIMARY KEY,
+     `string_col` VARCHAR(50) NOT NULL
 );
 
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -263,7 +263,7 @@ INSERT INTO `int_table` (`int_col`) VALUES (2147483647);
 INSERT INTO `int_table` (`int_col`) VALUES (-2147483648);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (0);
 INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (42);
-INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (4294967296);
+INSERT INTO `integer_unsigned_table` (`integer_unsigned_col`) VALUES (4294967295);
 INSERT INTO `json_table` (`json_col`) VALUES ('{"k1": "v1"}');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (X'7835383030');
 INSERT INTO `longblob_table` (`longblob_col`) VALUES (REPEAT(X'FF', 65535));

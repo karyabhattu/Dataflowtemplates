@@ -3,7 +3,7 @@ CREATE TABLE bigint_table (
   bigint_col INT64,
 ) PRIMARY KEY(id);
 
-CREATE TABLE bigint_table (
+CREATE TABLE bigint_unsigned_table (
   id INT64 NOT NULL,
   bigint_unsigned_col INT64,
 ) PRIMARY KEY(id);
