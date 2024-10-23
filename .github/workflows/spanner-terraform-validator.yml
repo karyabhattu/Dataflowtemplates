@@ -25,7 +25,7 @@ jobs:
           - v2/spanner-common/terraform/samples
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.2.2
       - name: Verify Terraform formatting
         uses: dflook/terraform-fmt-check@v1
         with:
