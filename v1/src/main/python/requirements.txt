@@ -128,9 +128,9 @@ google-api-core[grpc]==2.19.2 \
     --hash=sha256:53ec0258f2837dd53bbd3d3df50f5359281b3cc13f800c941dd15a9b5a415af4 \
     --hash=sha256:ca07de7e8aa1c98a8bfca9321890ad2340ef7f2eb136e558cee68f24b94b0a8f
     # via google-cloud-pubsub
-google-auth==2.34.0 \
-    --hash=sha256:72fd4733b80b6d777dcde515628a9eb4a577339437012874ea286bca7261ee65 \
-    --hash=sha256:8eb87396435c19b20d32abd2f984e31c191a15284af72eb922f10e5bde9c04cc
+google-auth==2.37.0 \
+    --hash=sha256:0054623abf1f9c83492c63d3f47e77f0a544caa3d40b2d98e099a611c2dd5d00 \
+    --hash=sha256:42664f18290a6be591be5329a96fe30184be1a1badb7292a7f686a9659de9ca0
     # via
     #   google-api-core
     #   google-cloud-pubsub
